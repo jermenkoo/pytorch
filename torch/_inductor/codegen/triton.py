@@ -20,7 +20,7 @@ from ..._dynamo.utils import counters
 from .. import config, ir, scheduler
 from ..codecache import code_hash, get_path
 from ..dependencies import MemoryDep, StarDep
-from ..ir import ReductionHint
+from ..ir import IRNode, ReductionHint
 from ..optimize_indexing import indexing_dtype_strength_reduction
 from ..triton_heuristics import AutotuneHint
 from ..utils import (
@@ -1895,7 +1895,7 @@ class TritonKernel(Kernel):
                 sizes.append("1")
         return f"[{', '.join(sizes)}]"
 
-    def call_kernel(self, name: str):
+    def call_kernel(self, name: str, node: IRNode = None):
         wrapper = V.graph.wrapper_code
         _, call_args, _ = self.args.python_argdefs()
         # dynamo wraps unspec variable as 0d CPU tensor, need convert to scalar
@@ -1920,6 +1920,8 @@ class TritonKernel(Kernel):
             call_args,
             grid,
             V.graph.scheduler.current_device.index,
+            cuda=True,
+            triton=True,
         )
 
     def warn_mix_layout(self, kernel_name):
@@ -2023,7 +2025,9 @@ class TritonScheduling:
                 return False
 
             if node1.is_template():
-                return True  # skip checks for compatible tiling
+                # Only allow fusion for TritonTemplates for now.
+                # Fusion for CUDATemplates are not supported.
+                return isinstance(node1.node, TritonTemplateBuffer)
 
             # check for a bad combined tiling
             tiling1 = self.select_tiling(node1.get_nodes(), numel1, rnumel1)
@@ -2378,7 +2382,7 @@ class TritonScheduling:
         node_schedule = [template_node, *epilogue_nodes]
         kernel_name = self.define_kernel(src_code, node_schedule)
         self.codegen_comment(node_schedule)
-        kernel.call_kernel(kernel_name)
+        kernel.call_kernel(kernel_name, template_node.node)
         self.scheduler.free_buffers()
 
     def codegen_sync(self):

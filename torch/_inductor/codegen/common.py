@@ -479,14 +479,18 @@ class KernelArgs:
 
         # TODO(jansel): replace this with data from scheduler
         buffer_types = {x.get_name(): x.get_dtype() for x in V.graph.buffers}
+        print(f"1: {buffer_types=}")
         for name, val in V.graph.graph_inputs.items():
             if isinstance(val, sympy.Expr):
                 buffer_types[name] = get_sympy_Expr_dtype(val)
             else:
                 buffer_types[name] = val.get_dtype()
+        print(f"2: {buffer_types=}")
         buffer_types.update(
             {name: val.dtype for name, val in V.graph.constants.items()}
         )
+        print(f"3: {buffer_types=}")
+        print(f"{V.graph.graph_inputs.items()}")
 
         call_args = []
         arg_defs = []
@@ -496,7 +500,7 @@ class KernelArgs:
                 continue
             outer = inplaced.other_names[-1]
             inner = inplaced.inner_name
-            dtype = buffer_types[outer]
+            dtype = buffer_types.get(outer, V.graph.get_dtype(outer))
             cpp_dtype = DTYPE_TO_CPP[dtype]
             arg_defs.append(f"{cpp_dtype}* {inner}")
             call_args.append(self.wrap_ptr_arg(outer, dtype))
@@ -504,7 +508,7 @@ class KernelArgs:
         for outer, inner in self.input_buffers.items():
             if outer in self.inplace_buffers:
                 continue
-            dtype = buffer_types[outer]
+            dtype = buffer_types.get(outer, V.graph.get_dtype(outer))
             cpp_dtype = DTYPE_TO_CPP[dtype]
             arg_defs.append(f"const {cpp_dtype}* {inner}")
             call_args.append(self.wrap_ptr_arg(outer, dtype))
@@ -512,7 +516,7 @@ class KernelArgs:
         for outer, inner in self.output_buffers.items():
             if outer in self.inplace_buffers or inner == "REMOVED":
                 continue
-            dtype = buffer_types[outer]
+            dtype = buffer_types.get(outer, V.graph.get_dtype(outer))
             cpp_dtype = DTYPE_TO_CPP[dtype]
             arg_defs.append(f"{cpp_dtype}* {inner}")
             call_args.append(self.wrap_ptr_arg(outer, dtype))
@@ -949,3 +953,15 @@ class OptimizationContext:
 
     # Load uint8 value as float32
     is_load_uint8_as_float: bool = False
+
+
+@functools.lru_cache(None)
+def jinja2_env():
+    try:
+        import jinja2
+
+        return jinja2.Environment(
+            undefined=jinja2.StrictUndefined,
+        )
+    except ImportError:
+        return None

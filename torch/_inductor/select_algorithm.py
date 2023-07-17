@@ -18,10 +18,10 @@ from torch._dynamo.testing import rand_strided
 from torch._dynamo.utils import counters, identity
 
 from . import config, ir
-from .autotune_process import BenchmarkRequest, TensorMeta
+from .autotune_process import TritonBenchmarkRequest, TensorMeta
 from .codecache import code_hash, PersistentCache, PyCodeCache
 
-from .codegen.common import IndentedBuffer
+from .codegen.common import IndentedBuffer, jinja2_env
 from .codegen.triton import texpr, TritonKernel, TritonPrinter, TritonScheduling
 
 from .codegen.triton_utils import config_of, signature_of
@@ -34,7 +34,7 @@ log = logging.getLogger(__name__)
 # correctness checks struggle with fp16/tf32
 VERIFY = False  # dict(atol=1, rtol=0.05)
 PRINT_AUTOTUNE = True
-DEBUG = False
+DEBUG = True
 
 
 class KernelNamespace:
@@ -330,30 +330,18 @@ class TritonTemplateKernel(TritonKernel):
             )
 
 
-@functools.lru_cache(None)
-def _jinja2_env():
-    try:
-        import jinja2
-
-        return jinja2.Environment(
-            undefined=jinja2.StrictUndefined,
-        )
-    except ImportError:
-        return None
-
-
 class TritonTemplate:
     index_counter = itertools.count()
     all_templates = dict()
 
     @staticmethod
     def _template_from_string(source):
-        env = _jinja2_env()
+        env = jinja2_env()
         if env is not None:
             return env.from_string(source)
         return None
 
-    def __init__(self, name: str, grid: Any, source: str, debug=False):
+    def __init__(self, name: str, grid: Any, source: str, debug=True):
         super().__init__()
         self.name = name
         self.grid = grid
@@ -497,16 +485,16 @@ class TritonTemplate:
 
         # create the BenchmarkRequest
         grid = self.grid(*V.graph.sizevars.size_hints(layout.size), kwargs)
-        bmreq = BenchmarkRequest(
+        bmreq = TritonBenchmarkRequest(
+            kernel_name=kernel_name,
+            input_tensor_meta=TensorMeta.from_irnodes(input_nodes),
+            output_tensor_meta=TensorMeta.from_irnodes(layout),
             module_path=mod.__file__,
             module_cache_key=mod.key,
-            kernel_name=kernel_name,
             grid=grid,
             extra_args=extra_args,
             num_stages=num_stages,
             num_warps=num_warps,
-            input_tensors=TensorMeta.from_irnodes(input_nodes),
-            output_tensor=TensorMeta.from_irnodes(layout),
         )
 
         return TritonTemplateCaller(
@@ -628,7 +616,7 @@ class TritonTemplateCaller(ChoiceCaller):
 
     def output_node(self):
         return ir.TensorBox.create(
-            ir.TemplateBuffer(
+            ir.TritonTemplateBuffer(
                 layout=self.layout,
                 inputs=self.input_nodes,
                 make_kernel_render=self.make_kernel_render,
@@ -712,6 +700,7 @@ class ErrorFromChoice(RuntimeError):
 class AlgorithmSelectorCache(PersistentCache):
     def __call__(self, name, choices: List[ChoiceCaller], input_nodes, layout):
         # TODO(nmacchioni): remove once CI tests are fixed
+        print(f"enter AlgorithmSelectorCache")
         choices = [choice for choice in choices if choice is not None]
         if len(choices) == 0:
             raise RuntimeError(
@@ -719,8 +708,8 @@ class AlgorithmSelectorCache(PersistentCache):
                 "config (defined in torch/_inductor/config.py) to allow at least one choice. "
             )
 
-        if len(choices) == 1:
-            return choices[0].output_node()
+        # if len(choices) == 1:
+        #     return choices[0].output_node()
 
         @functools.lru_cache(None)
         def make_benchmark_fn():
@@ -835,6 +824,7 @@ class AlgorithmSelectorCache(PersistentCache):
                 print(f"MultiProcessTuning {choice}: {elapse}")
             return out
 
+        print(f"{config.autotune_in_subproc=}")
         benchmark = (
             benchmark_in_sub_process
             if config.autotune_in_subproc

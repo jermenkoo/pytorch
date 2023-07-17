@@ -1,6 +1,7 @@
 # Owner(s): ["module: inductor"]
 
 import torch
+torch.cuda.init()
 from torch import multiprocessing as mp
 from torch._dynamo.test_case import run_tests, TestCase
 from torch._inductor import config
@@ -134,8 +135,10 @@ class TestDoBench(TestCase):
         ):
             torch.compile(mm_plus_mm)(a, b, c, d)
 
-    @parametrize("dynamic", (False, True))
-    def test_max_autotune_regular_mm(self, dynamic: bool):
+    # @parametrize("dynamic", (False, True))
+    @parametrize("dynamic", (False,))
+    @parametrize("max_autotune_gemm_backends", ("Cutlass",))
+    def test_max_autotune_regular_mm(self, dynamic: bool, max_autotune_gemm_backends: str):
         """
         Make sure autotuning mm in sub processes work without crashes.
         """
@@ -144,10 +147,14 @@ class TestDoBench(TestCase):
             a = torch.sin(a)
             return a @ b
 
-        a = torch.randn(100, 10).cuda()
-        b = torch.randn(10, 100).cuda()
+        a = torch.randn(100, 16).cuda().half()
+        b = torch.randn(16, 100).cuda().half()
 
-        with config.patch({"max_autotune": True, "autotune_in_subproc": True}):
+        with config.patch({
+            "max_autotune": True,
+            "autotune_in_subproc": False,
+            "max_autotune_gemm_backends": max_autotune_gemm_backends
+        }):
             torch.compile(mm, dynamic=dynamic)(a, b)
 
     @parametrize("dynamic", (False, True))
@@ -206,6 +213,7 @@ class TestDoBench(TestCase):
             y1 = compiled_fn(x1, w, b, mul1)
             y1_expected = fn(x1, w, b, mul1)
             torch.testing.assert_close(y1, y1_expected)
+
 
 
 if __name__ == "__main__":

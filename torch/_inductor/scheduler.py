@@ -1381,7 +1381,6 @@ class Scheduler:
                         "Cannot find a working triton installation. More information on installing Triton can be found at https://github.com/openai/triton"  # noqa: B950
                     )
             from .codegen.triton import TritonScheduling
-
             return TritonScheduling(self)
         else:
             raise RuntimeError(f"Unsupported device type: {device.type}")
@@ -1432,7 +1431,12 @@ class Scheduler:
 
             if node.is_template():
                 node, *epilogue = node.get_nodes()
-                self.get_backend(device).codegen_template(node, epilogue)
+                if isinstance(node.node, ir.CUDATemplateBuffer):
+                    from .codegen.cuda.cuda_scheduling import CUDAScheduling
+                    CUDAScheduling(self).codegen_template(node, epilogue)
+                else:
+                    self.get_backend(device).codegen_template(node, epilogue)
+
             elif node.is_extern():
                 self.codegen_extern_call(node)
             elif node.is_foreach():

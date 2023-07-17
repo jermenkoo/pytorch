@@ -7,6 +7,7 @@ import logging
 import math
 import operator
 import os
+import platform
 import shutil
 import sys
 import tempfile
@@ -677,6 +678,21 @@ def use_triton_template(layout, *, enable_int32=False):
     )
 
 
+def use_cutlass_template(layout):
+    layout_dtypes = (torch.float16, torch.bfloat16, torch.float32)
+    return (
+        (
+            config.max_autotune
+            or config.max_autotune_gemm
+            or config.search_autotune_cache
+        )
+        and "CUTLASS" in config.max_autotune_gemm_backends.upper().split(",")
+        and layout.device.type == "cuda"
+        and layout.dtype in layout_dtypes
+        and is_big_gpu(layout.device.index or 0)
+    )
+
+
 def use_aten_gemm_kernels():
     return "ATEN" in config.max_autotune_gemm_backends.upper().split(",")
 
@@ -991,3 +1007,11 @@ def try_find_schema(schemas, args, kwargs):
             return schema
 
     return None
+
+
+def is_linux() -> bool:
+    return platform.system() == "Linux"
+
+
+def is_windows() -> bool:
+    return os.name == "nt"
