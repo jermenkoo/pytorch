@@ -491,6 +491,10 @@ inductor_all_samples = {
     "triu",
 }
 
+allow_graph_breaks = {
+    "item",
+}
+
 
 class TestInductorOpInfo(TestCase):
     check_model = check_model
@@ -626,8 +630,12 @@ class TestInductorOpInfo(TestCase):
                     no_python = do_nopython(fn, args, kwargs)
                     adjusted_kwargs = {
                         "check_lowp": False,
+<<<<<<< HEAD
                         "nopython": no_python,
                         "check_has_compiled": no_python,
+=======
+                        "nopython": nopython,
+>>>>>>> 22279f2d9c4 (Allow graph breaks in item() inductor opinfo tests)
                         # skip checking gradient on CPU for now
                         "check_gradient": False,
                     }
