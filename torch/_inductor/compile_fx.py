@@ -206,7 +206,10 @@ def inner_compile_with_cpp_wrapper(inner_compile):
                 compiled = inner_compile(
                     clone_graph(gm), example_inputs, **kwargs_patched
                 )
-                if torch._guards.TracingContext.get().output_strides:
+                if (
+                    torch._guards.TracingContext.get()
+                    and torch._guards.TracingContext.get().output_strides
+                ):
                     torch._guards.TracingContext.get().output_strides.clear()
 
                 def materialize(x):
@@ -217,18 +220,20 @@ def inner_compile_with_cpp_wrapper(inner_compile):
                         assert not isinstance(x, FakeTensor)
                         return x
 
-                assert torch._guards.TracingContext.get()
-                real_inputs = [
-                    materialize(x)
-                    for x in [
-                        *[
-                            param
-                            for param in torch._guards.TracingContext.get().params_flat
-                            if param is not None
-                        ],
-                        *V.real_inputs,
+                if torch._guards.TracingContext.get():
+                    real_inputs = [
+                        materialize(x)
+                        for x in [
+                            *[
+                                param
+                                for param in torch._guards.TracingContext.get().params_flat
+                                if param is not None
+                            ],
+                            *V.real_inputs,
+                        ]
                     ]
-                ]
+                else:
+                    real_inputs = [materialize(x) for x in V.real_inputs]
 
                 with torch.utils._python_dispatch._disable_current_modes():
                     compiled(real_inputs)
@@ -521,6 +526,9 @@ def fx_codegen_and_compile(
                     else:
                         context.output_strides.append(None)
             compiled_fn = graph.compile_to_fn()
+
+            if config.aot_from_export:
+                return compiled_fn
 
             if graph.disable_cudagraphs:
                 BoxedBool.disable(cudagraphs)
@@ -1067,6 +1075,10 @@ def compile_fx(
     tracing_context = (
         torch._guards.TracingContext.get() or torch._guards.TracingContext(fake_mode)
     )
+    if config.aot_from_export:
+        with V.set_fake_mode(fake_mode), compiled_autograd.disable():
+            return fw_compiler(model_, example_inputs_)
+
     with V.set_fake_mode(fake_mode), torch._guards.tracing(
         tracing_context
     ), compiled_autograd.disable():

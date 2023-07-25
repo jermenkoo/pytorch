@@ -119,14 +119,15 @@ class ExportDynamoConfig:
     allow_rnn: bool = True
 
 
-DECOMP_TABLE = core_aten_decompositions()
-
-
 def export(
     f: Callable,
     args: Tuple[Any],
     kwargs: Optional[Dict[str, Any]] = None,
     constraints: Optional[List[Constraint]] = None,
+    *,
+    decomposition_table: Optional[Dict] = None,
+    _add_runtime_assertions=True,
+    _functionalize_runtime_assertions=False,
 ) -> ExportedProgram:
     """
     Traces either an nn.Module's forward function or just a callable with PyTorch
@@ -142,11 +143,17 @@ def export(
         constraints: A optional list of constraints on the dynamic arguments specifying
             their possible range of their shapes
 
+        decompositions (Dict): A dictionary to define the decomposition of
+            larger Aten ops into simpler or core Aten ops.
+
     Returns:
         An ExportedProgram containing the traced method.
     """
     constraints = constraints or []
     kwargs = kwargs or {}
+
+    if decomposition_table is None:
+        decomposition_table = core_aten_decompositions()
 
     with torch._dynamo.config.patch(dataclasses.asdict(ExportDynamoConfig())):  # type: ignore[attr-defined]
         try:
@@ -253,7 +260,7 @@ def export(
             gm, graph_signature = aot_export_module(
                 gm_torch_level,
                 (*fake_args, *_reorder_kwargs_by_names(orig_args, fake_args, fake_kwargs).values()),
-                decompositions=DECOMP_TABLE,
+                decompositions=decomposition_table,
                 trace_joint=False
             )
 
