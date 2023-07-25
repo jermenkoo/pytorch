@@ -844,7 +844,7 @@ class AotCodeCache:
     clear = staticmethod(cache.clear)
 
     @classmethod
-    def compile(cls, graph, source_code, cuda):
+    def _compile(cls, graph, source_code, cuda):
         # TODO: update cpp_compile_command for different platforms
         picked_vec_isa = invalid_vec_isa if cuda else pick_vec_isa()
         cpp_command = repr(
@@ -888,9 +888,16 @@ class AotCodeCache:
 
                 cls.cache[key] = output_so
 
+            return cls.cache[key]
+        return None
+
+    @classmethod
+    def compile(cls, graph, source_code, cuda):
+        out = cls._compile(graph, source_code, cuda)
+
         def wrapper_call(*args):
             assert len(graph.graph_outputs) > 0
-            return cls.cache[key], *(None for i in range(len(graph.graph_outputs) - 1))
+            return out, *(None for i in range(len(graph.graph_outputs) - 1))
 
         return wrapper_call
 

@@ -63,6 +63,10 @@ reordering = True
 # If not specified, a temp directory will be created under the default caching path
 aot_inductor_output_path = ""
 
+# If true, specifies that we are running AOTInductor from an exported program,
+# implying that aot_autograd has already been run.
+aot_from_export = False
+
 # enable slow autotuning passes to select algorithms
 max_autotune = os.environ.get("TORCHINDUCTOR_MAX_AUTOTUNE") == "1"
 
