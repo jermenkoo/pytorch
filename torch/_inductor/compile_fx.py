@@ -536,7 +536,7 @@ def fx_codegen_and_compile(
                         context.output_strides.append(None)
             compiled_fn = graph.compile_to_fn()
 
-            if config.aot_from_export:
+            if _in_aot_compilation:
                 return compiled_fn
 
             if graph.disable_cudagraphs:
@@ -1089,7 +1089,7 @@ def compile_fx(
     tracing_context = (
         torch._guards.TracingContext.get() or torch._guards.TracingContext(fake_mode)
     )
-    if config.aot_from_export:
+    if _in_aot_compilation:
         with V.set_fake_mode(fake_mode), compiled_autograd.disable():
             return fw_compiler(model_, example_inputs_)
 
