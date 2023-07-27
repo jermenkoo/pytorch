@@ -938,7 +938,8 @@ class GraphLowering(torch.fx.Interpreter):
             code, linemap = self.codegen()
             output_code_log.debug("Output code: \n%s", code)
 
-            if config.aot_from_export:
+            if config.cpp_wrapper:
+                # Directly return the file path with the compiled code
                 return AotCodeCache._compile(self, code, cuda=self.cuda)
             return AotCodeCache.compile(self, code, cuda=self.cuda)
         else:

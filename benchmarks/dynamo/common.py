@@ -1110,13 +1110,8 @@ class AOTInductorModelCache:
 
             # The exact API is subject to change
             exported = torch._export.export(model, example_inputs)
-            param_buffer_values = list(exported.state_dict.values())
-            flat_example_inputs = fx_pytree.tree_flatten_spec(
-                example_inputs, exported.call_spec.in_spec
-            )
-            all_args = (*param_buffer_values, *flat_example_inputs)
             # AOT compile into a .so
-            so_path = torch._inductor.aot_compile(exported.graph_module, all_args)
+            so_path = torch._inductor.aot_compile(exported, example_inputs)
 
             # Use a utility function for easier benchmarking
             source = """

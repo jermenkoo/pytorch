@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 
 import torch.fx
+import torch.fx._pytree as fx_pytree
 
 __all__ = ["compile", "list_mode_options", "list_options", "cudagraph_mark_step_begin"]
 
@@ -28,7 +29,7 @@ def compile(
 
 
 def aot_compile(
-    gm: torch.fx.GraphModule,
+    ep: "ExportedProgram",
     example_inputs: List[torch.Tensor],
     options: Optional[Dict[str, Any]] = None,
 ) -> str:
@@ -43,15 +44,23 @@ def aot_compile(
     Returns:
         Path to the generated shared library
     """
+    from torch._export.exported_program import ExportedProgram
     from .compile_fx import compile_fx_aot
 
+    assert isinstance(ep, ExportedProgram)
+
+    param_buffer_values = list(ep.state_dict.values())
+    flat_example_inputs = fx_pytree.tree_flatten_spec(
+        example_inputs, ep.call_spec.in_spec
+    )
+    all_args = (*param_buffer_values, *flat_example_inputs)
+
     result = compile_fx_aot(
-        gm,
-        example_inputs,
+        ep.graph_module,
+        all_args,
         config_patches=options,
-    )()
-    lib_path = result[0] if isinstance(result, (list, tuple)) else result
-    return lib_path
+    )
+    return result
 
 
 def list_mode_options(mode: str = None, dynamic: bool = None) -> Dict[str, Any]:

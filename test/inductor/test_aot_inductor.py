@@ -9,7 +9,6 @@ import torch._inductor
 
 import torch.fx._pytree as fx_pytree
 from torch._dynamo.testing import same
-from torch._export._experimental import aot_compile
 from torch._inductor.decomposition import fast_random_decomps
 
 from torch.testing._internal.common_utils import TEST_WITH_ROCM, TestCase
@@ -36,7 +35,7 @@ class AOTInductorModelRunner:
             decomposition_table=fast_random_decomps(),
             _add_runtime_assertions=False,
         )
-        so_path = aot_compile(exported, example_inputs)
+        so_path = torch._inductor.aot_compile(exported, example_inputs)
 
         # Use a utility function for easier testing
         source = """
