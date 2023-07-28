@@ -39,6 +39,7 @@ from torch._dynamo.testing import dummy_fx_compile, format_speedup, same
 from torch._dynamo.utils import clone_inputs, graph_break_reasons
 from torch._functorch.aot_autograd import set_model_name
 from torch._inductor import config as inductor_config
+from torch._inductor.decomposition import select_decomp_table
 from torch._inductor.utils import fresh_inductor_cache
 from torch._subclasses.fake_tensor import FakeTensorMode
 
@@ -1109,7 +1110,9 @@ class AOTInductorModelCache:
                 output_tensors.append(torch.empty_like(output))
 
             # The exact API is subject to change
-            exported = torch._export.export(model, example_inputs)
+            exported = torch._export.export(
+                model, example_inputs, decomposition_table=select_decomp_table()
+            )
             # AOT compile into a .so
             so_path = torch._inductor.aot_compile(exported, example_inputs)
 
