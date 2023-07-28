@@ -143,8 +143,9 @@ def export(
         constraints: A optional list of constraints on the dynamic arguments specifying
             their possible range of their shapes
 
-        decompositions (Dict): A dictionary to define the decomposition of
-            larger Aten ops into simpler or core Aten ops.
+        decomposition_table (Dict): A dictionary to define the decomposition of
+            larger Aten ops into simpler or core Aten ops. If no decomposition
+            table is provided, the Core ATen decomposition table will be used.
 
     Returns:
         An ExportedProgram containing the traced method.
