@@ -121,10 +121,7 @@ def export(
     args: Tuple[Any],
     kwargs: Optional[Dict[str, Any]] = None,
     constraints: Optional[List[Constraint]] = None,
-    *,
     decomposition_table: Optional[Dict] = None,
-    _add_runtime_assertions=True,
-    _functionalize_runtime_assertions=False,
 ) -> ExportedProgram:
     """
     Traces either an nn.Module's forward function or just a callable with PyTorch

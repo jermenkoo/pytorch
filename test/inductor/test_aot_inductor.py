@@ -37,7 +37,6 @@ class AOTInductorModelRunner:
             model,
             example_inputs,
             decomposition_table=select_decomp_table(),
-            _add_runtime_assertions=False,
         )
         so_path = torch._inductor.aot_compile(exported, example_inputs)
 
