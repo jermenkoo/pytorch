@@ -384,7 +384,7 @@ def aot_compile(
     all_args = (*param_buffer_values, *flat_example_inputs)
 
     so_path = compile_fx_aot(
-        ep.graph_module,
+        ep,
         all_args,  # type: ignore[arg-type]
     )
     return so_path, ep

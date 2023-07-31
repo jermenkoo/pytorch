@@ -28,10 +28,12 @@ class AOTInductorModelRunner:
             output_tensors.append(torch.empty_like(output))
 
         # The exact API is subject to change
-        so_path, exported = torch._export.aot_compile(
-            model,
-            example_inputs,
-        )
+        with torch.no_grad():
+            so_path, exported = torch._export.aot_compile(
+                model,
+                example_inputs,
+            )
+            print(so_path)
 
         # Use a utility function for easier testing
         source = """
