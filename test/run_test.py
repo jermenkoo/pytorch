@@ -21,7 +21,6 @@ import pkg_resources
 import torch
 import torch.distributed as dist
 
-from tools.stats.upload_stats_lib import emit_metric
 from torch.multiprocessing import current_process, get_context
 from torch.testing._internal.common_utils import (
     FILE_SCHEMA,
@@ -52,6 +51,7 @@ try:
         ShardedTest,
         THRESHOLD,
     )
+    from tools.stats.upload_stats_lib import emit_metric
 
     HAVE_TEST_SELECTION_TOOLS = True
 except ImportError as e:
