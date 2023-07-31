@@ -42,16 +42,15 @@ try:
     # using tools/ to optimize test run.
     sys.path.insert(0, str(REPO_ROOT))
     from tools.stats.export_test_times import TEST_TIMES_FILE
+    from tools.stats.upload_stats_lib import emit_metric
     from tools.testing.test_selections import (
         calculate_shards,
         get_reordered_tests,
         get_test_case_configs,
-        log_time_savings,
         NUM_PROCS,
         ShardedTest,
         THRESHOLD,
     )
-    from tools.stats.upload_stats_lib import emit_metric
 
     HAVE_TEST_SELECTION_TOOLS = True
 except ImportError as e:
@@ -1413,9 +1412,7 @@ def get_selected_tests(options) -> List[ShardedTest]:
     return selected_tests
 
 
-def do_sharding(
-    options, selected_tests: List[str], prioritized_tests: List[str]
-) -> List[ShardedTest]:
+def do_sharding(options, selected_tests: List[str]) -> List[ShardedTest]:
     which_shard, num_shards = 1, 1
     if options.shard:
         assert len(options.shard) == 2, "Unexpected shard format"
