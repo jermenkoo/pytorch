@@ -11,7 +11,6 @@ import torch._inductor
 
 import torch.fx._pytree as fx_pytree
 from torch._dynamo.testing import same
-from torch._inductor.decomposition import select_decomp_table
 
 from torch._inductor.utils import run_and_get_code
 from torch.testing._internal.common_utils import TEST_WITH_ROCM, TestCase
@@ -33,12 +32,10 @@ class AOTInductorModelRunner:
             output_tensors.append(torch.empty_like(output))
 
         # The exact API is subject to change
-        exported = torch._export.export(
+        so_path, exported = torch._export.aot_compile(
             model,
             example_inputs,
-            decomposition_table=select_decomp_table(),
         )
-        so_path = torch._inductor.aot_compile(exported, example_inputs)
 
         # Use a utility function for easier testing
         source = """

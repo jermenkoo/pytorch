@@ -44,23 +44,15 @@ def aot_compile(
     Returns:
         Path to the generated shared library
     """
-    from torch._export.exported_program import ExportedProgram
     from .compile_fx import compile_fx_aot
 
-    assert isinstance(ep, ExportedProgram)
-
-    param_buffer_values = list(ep.state_dict.values())
-    flat_example_inputs = fx_pytree.tree_flatten_spec(
-        example_inputs, ep.call_spec.in_spec
-    )
-    all_args = (*param_buffer_values, *flat_example_inputs)
-
     result = compile_fx_aot(
-        ep.graph_module,
-        all_args,
+        gm,
+        example_inputs,
         config_patches=options,
-    )
-    return result
+    )()
+    lib_path = result[0] if isinstance(result, (list, tuple)) else result
+    return lib_path
 
 
 def list_mode_options(mode: str = None, dynamic: bool = None) -> Dict[str, Any]:

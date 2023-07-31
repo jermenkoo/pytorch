@@ -4,12 +4,14 @@ import re
 import weakref
 from collections import OrderedDict
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
+from unittest.mock import patch
 
 import sympy
 
 import torch
 import torch._dynamo
 import torch.fx
+import torch.fx._pytree as fx_pytree
 
 import torch.utils._pytree as pytree
 from torch._decomp import core_aten_decompositions, get_decompositions
@@ -116,12 +118,14 @@ class ExportDynamoConfig:
 DEFAULT_EXPORT_DYNAMO_CONFIG = ExportDynamoConfig()
 
 
+DECOMP_TABLE = core_aten_decompositions()
+
+
 def export(
     f: Callable,
     args: Tuple[Any],
     kwargs: Optional[Dict[str, Any]] = None,
     constraints: Optional[List[Constraint]] = None,
-    decomposition_table: Optional[Dict] = None,
 ) -> ExportedProgram:
     """
     Traces either an nn.Module's forward function or just a callable with PyTorch
@@ -136,10 +140,6 @@ def export(
 
         constraints: A optional list of constraints on the dynamic arguments specifying
             their possible range of their shapes
-
-        decomposition_table (Dict): A dictionary to define the decomposition of
-            larger Aten ops into simpler or core Aten ops. If no decomposition
-            table is provided, the Core ATen decomposition table will be used.
 
     Returns:
         An ExportedProgram containing the traced method.
@@ -253,7 +253,7 @@ def export(
             gm, graph_signature = aot_export_module(
                 gm_torch_level,
                 (*fake_args, *_reorder_kwargs_by_names(orig_args, fake_args, fake_kwargs).values()),
-                decompositions=decomposition_table,
+                decompositions=DECOMP_TABLE,
                 trace_joint=False
             )
 
@@ -339,3 +339,50 @@ def _reorder_kwargs_by_names(arg_names: List[str], args: Tuple[Any], kwargs: Dic
         f"but got {len(args)} positional args, {len(kwargs)} kwargs."
     )
     return OrderedDict({kw_name: kwargs[kw_name] for kw_name in arg_names[len(args):]})
+
+
+def aot_compile(
+    f: Callable,
+    args: Tuple[Any],
+    kwargs: Optional[Dict[str, Any]] = None,
+    constraints: Optional[List[Constraint]] = None,
+) -> Tuple[str, ExportedProgram]:
+    """
+    Note: this function is not stable yet
+
+    Traces either an nn.Module's forward function or just a callable with PyTorch
+    operations inside, generates executable cpp code from the program, and returns
+    the path to the generated shared library
+
+    Args:
+        f: the `nn.Module` or callable to trace.
+
+        args: example positional inputs.
+
+        kwargs: optional example keyword inputs.
+
+        constraints: A optional list of constraints on the dynamic arguments specifying
+            their possible range of their shapes
+
+    Returns:
+        Path to the generated shared library, and the exported program
+    """
+    from torch._inductor.compile_fx import compile_fx_aot
+    from torch._inductor.decomposition import select_decomp_table
+
+    DECOMP_TABLE = select_decomp_table()
+    ep = export(f, args, kwargs, constraints)
+    # Reset the global value
+    DECOMP_TABLE = core_aten_decompositions()
+
+    param_buffer_values = list(ep.state_dict.values())
+    flat_example_inputs = fx_pytree.tree_flatten_spec(
+        combine_args_kwargs(args, kwargs), ep.call_spec.in_spec  # type: ignore[arg-type]
+    )
+    all_args = (*param_buffer_values, *flat_example_inputs)
+
+    so_path = compile_fx_aot(
+        ep.graph_module,
+        all_args,  # type: ignore[arg-type]
+    )
+    return so_path, ep
