@@ -97,7 +97,7 @@ jobs:
     uses: ./.github/workflows/_linux-test.yml
     needs: linux-jammy-py3_9-clang12-asan-build
     with:
-      build-environment: linux-focal-py3.9-clang7-asan
+      build-environment: linux-jammy-py3.9-clang12-asan
       docker-image: ${{ needs.linux-jammy-py3_9-clang12-asan-build.outputs.docker-image }}
       test-matrix: ${{ needs.linux-jammy-py3_9-clang12-asan-build.outputs.test-matrix }}
       sync-tag: asan-test
