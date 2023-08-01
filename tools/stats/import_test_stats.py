@@ -123,7 +123,7 @@ def get_disabled_tests(
 def get_test_file_ratings(
     dirpath: str, filename: str = TEST_FILE_RATINGS_FILE
 ) -> Optional[Dict[str, Any]]:
-    url = "https://raw.githubusercontent.com/pytorch/test-infra/csl/stats/stats/test-times.json"
+    url = "https://raw.githubusercontent.com/pytorch/test-infra/csl/stats/stats/file_test_rating.json"
     try:
         return fetch_and_cache(dirpath, filename, url, lambda x: x)
     except Exception:

@@ -1421,9 +1421,6 @@ def do_sharding(options, selected_tests: List[str]) -> List[ShardedTest]:
         assert (
             which_shard <= num_shards
         ), "Selected shard must be less than or equal to total number of shards"
-        assert num_shards <= len(
-            selected_tests
-        ), f"Number of shards must be less than {len(selected_tests)}"
 
     # Download previous test times to make sharding decisions
     path = os.path.join(str(REPO_ROOT), TEST_TIMES_FILE)
