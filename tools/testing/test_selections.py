@@ -281,6 +281,7 @@ def log_time_savings(
 def _get_file_rating_tests() -> Set[str]:
     path = REPO_ROOT / "test" / TEST_FILE_RATINGS_FILE
     if not os.path.exists(path):
+        print(f"could not find path {path}")
         return set()
     with open(path) as f:
         test_file_ratings = cast(Dict[str, Dict[str, float]], json.load(f))
