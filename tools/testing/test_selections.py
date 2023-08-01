@@ -297,7 +297,10 @@ def _get_file_rating_tests() -> Set[str]:
                 ratings[test_file] = 0
             ratings[test_file] += score
     limit = 100
-    prioritize = sorted(ratings, key=lambda x: ratings[x])[:limit]
+    prioritize = [
+        f"{x.replace('.', '/')}.py"
+        for x in sorted(ratings, key=lambda x: ratings[x])[:limit]
+    ]
     return set(prioritize)
 
 

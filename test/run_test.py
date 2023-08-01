@@ -1632,12 +1632,12 @@ def main():
         print_to_stderr(
             "General parallel {} tests:\n {}".format(
                 NUM_PROCS,
-                "\n ".join(str(x) for x in prioritized_tests if not must_serial(x)),
+                "\n ".join(str(x) for x in not_prioritized_tests if not must_serial(x)),
             )
         )
         print_to_stderr(
             "General serial tests:\n {}".format(
-                "\n ".join(str(x) for x in prioritized_tests if must_serial(x))
+                "\n ".join(str(x) for x in not_prioritized_tests if must_serial(x))
             )
         )
 
