@@ -279,7 +279,7 @@ def log_time_savings(
 
 
 def _get_file_rating_tests() -> Set[str]:
-    path = REPO_ROOT / "test" / TEST_FILE_RATINGS_FILE)
+    path = REPO_ROOT / "test" / TEST_FILE_RATINGS_FILE
     if not os.path.exists(path):
         return set()
     with open(path) as f:
