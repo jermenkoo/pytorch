@@ -1605,12 +1605,6 @@ def main():
         # downloading test cases configuration to local environment
         get_test_case_configs(dirpath=test_directory)
         (prioritized_tests, not_prioritized_tests) = get_reordered_tests(selected_tests)
-        # log_time_savings(
-        #     selected_tests,
-        #     prioritized_tests,
-        #     is_serial_test_fn=must_serial,
-        #     num_procs=NUM_PROCS,
-        # )
 
     # Should take into account both at the same time but I'm lazy
     prioritized_tests = do_sharding(options, prioritized_tests)
@@ -1690,7 +1684,12 @@ def main():
 
         if IS_CI and HAVE_TEST_SELECTION_TOOLS:
             emit_metric("cats_td_experiment_1", experiment_dict)
-
+        # log_time_savings(
+        #     selected_tests,
+        #     prioritized_tests,
+        #     is_serial_test_fn=must_serial,
+        #     num_procs=NUM_PROCS,
+        # )
     if len(failure_messages) != 0:
         for err in failure_messages:
             print_to_stderr(err)

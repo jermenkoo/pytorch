@@ -279,7 +279,7 @@ def log_time_savings(
 
 
 def _get_file_rating_tests() -> Set[str]:
-    path = os.path.join(str(REPO_ROOT), TEST_FILE_RATINGS_FILE)
+    path = REPO_ROOT / "test" / TEST_FILE_RATINGS_FILE)
     if not os.path.exists(path):
         return set()
     with open(path) as f:
@@ -298,7 +298,7 @@ def _get_file_rating_tests() -> Set[str]:
             ratings[test_file] += score
     limit = 100
     prioritize = [
-        f"{x.replace('.', '/')}.py"
+        f"{x.replace('.', '/')}"
         for x in sorted(ratings, key=lambda x: ratings[x])[:limit]
     ]
     return set(prioritize)
