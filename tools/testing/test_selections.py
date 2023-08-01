@@ -338,7 +338,7 @@ def get_reordered_tests(
         _get_file_rating_tests(),
         "If run, these tests will be preioritized because I say so",
     )
-
+    prioritized_tests = [x for x in tests if x in prioritized_tests]
     the_rest = [x for x in tests if x not in prioritized_tests]
 
     if prioritized_tests:
