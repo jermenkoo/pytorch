@@ -1690,12 +1690,7 @@ def main():
 
         if IS_CI and HAVE_TEST_SELECTION_TOOLS:
             emit_metric("cats_td_experiment_1", experiment_dict)
-        # log_time_savings(
-        #     selected_tests,
-        #     prioritized_tests,
-        #     is_serial_test_fn=must_serial,
-        #     num_procs=NUM_PROCS,
-        # )
+
     if len(failure_messages) != 0:
         for err in failure_messages:
             print_to_stderr(err)
