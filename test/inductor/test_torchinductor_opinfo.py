@@ -186,8 +186,6 @@ inductor_expected_failures_single_sample["cpu"] = {
     "equal": {b8, f16, f32, f64, i32, i64},
     "index_reduce": {f16, f32, f64},
     "istft": {f32, f64},
-    # Unsupported: data dependent operator: aten._local_scalar_dense.default
-    "item": {b8, f16, f32, f64, i32, i64},
     "linalg.eig": {f32, f64},
     "linalg.eigh": {f32, f64},
     "linalg.eigvals": {f32, f64},
@@ -279,8 +277,6 @@ inductor_expected_failures_single_sample["cuda"] = {
     "cov": {f16, f32, f64, i32, i64},
     "index_reduce": {f16, f32, f64},
     "istft": {f32, f64},
-    # Unsupported: data dependent operator: aten._local_scalar_dense.default
-    "item": {b8, f16, f32, f64, i32, i64},
     "linalg.eig": {f32, f64},
     "linalg.eigh": {f32, f64},
     "linalg.eigvals": {f32, f64},
@@ -630,16 +626,8 @@ class TestInductorOpInfo(TestCase):
                     no_python = do_nopython(fn, args, kwargs)
                     adjusted_kwargs = {
                         "check_lowp": False,
-<<<<<<< HEAD
-<<<<<<< HEAD
                         "nopython": no_python,
                         "check_has_compiled": no_python,
-=======
-                        "nopython": nopython,
->>>>>>> 22279f2d9c4 (Allow graph breaks in item() inductor opinfo tests)
-=======
-                        "nopython": True,
->>>>>>> 5a51786c928 (Update base for Update on "freezing w aot")
                         # skip checking gradient on CPU for now
                         "check_gradient": False,
                     }

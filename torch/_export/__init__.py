@@ -4,7 +4,6 @@ import re
 import weakref
 from collections import OrderedDict
 from typing import Any, Callable, Dict, List, Optional, Tuple, Union
-from unittest.mock import patch
 
 import sympy
 
