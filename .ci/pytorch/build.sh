@@ -6,6 +6,9 @@ set -ex
 # (This is set by default in the Docker images we build, so you don't
 # need to set it yourself.
 
+export SCCACHE_ERROR_LOG=/tmp/sccache_log.txt
+export SCCACHE_LOG=debug
+
 # shellcheck source=./common.sh
 source "$(dirname "${BASH_SOURCE[0]}")/common.sh"
 # shellcheck source=./common-build.sh
@@ -321,3 +324,4 @@ if [[ "$BUILD_ENVIRONMENT" != *libtorch* && "$BUILD_ENVIRONMENT" != *bazel* ]]; 
 fi
 
 print_sccache_stats
+cat /tmp/sccache_log.txt
