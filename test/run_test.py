@@ -1412,16 +1412,7 @@ def get_selected_tests(options) -> List[ShardedTest]:
     return selected_tests
 
 
-def do_sharding(options, selected_tests: List[str]) -> List[ShardedTest]:
-    which_shard, num_shards = 1, 1
-    if options.shard:
-        assert len(options.shard) == 2, "Unexpected shard format"
-        assert min(options.shard) > 0, "Shards must be positive numbers"
-        which_shard, num_shards = options.shard
-        assert (
-            which_shard <= num_shards
-        ), "Selected shard must be less than or equal to total number of shards"
-
+def download_test_times(file: str = TEST_TIMES_FILE) -> Dict[str, float]:
     # Download previous test times to make sharding decisions
     path = os.path.join(str(REPO_ROOT), TEST_TIMES_FILE)
     if os.path.exists(path):
@@ -1434,14 +1425,35 @@ def do_sharding(options, selected_tests: List[str]) -> List[ShardedTest]:
         print(
             "::warning:: Gathered no stats from artifacts. Proceeding with default sharding plan."
         )
+        return {}
     else:
         print("Found test time stats from artifacts")
+        return test_file_times[test_config]
+
+
+def do_sharding(
+    options,
+    selected_tests: List[str],
+    test_file_times: Dict[str, float],
+    sort: bool = True,
+) -> List[ShardedTest]:
+    which_shard, num_shards = 1, 1
+    if options.shard:
+        assert len(options.shard) == 2, "Unexpected shard format"
+        assert min(options.shard) > 0, "Shards must be positive numbers"
+        which_shard, num_shards = options.shard
+        assert (
+            which_shard <= num_shards
+        ), "Selected shard must be less than or equal to total number of shards"
 
     if HAVE_TEST_SELECTION_TOOLS:
         # Do sharding
-        test_file_times_config = test_file_times.get(test_config, {})
         shards = calculate_shards(
-            num_shards, selected_tests, test_file_times_config, must_serial=must_serial
+            num_shards,
+            selected_tests,
+            test_file_times,
+            must_serial=must_serial,
+            sort=sort,
         )
         _, tests_from_shard = shards[which_shard - 1]
         selected_tests = tests_from_shard
@@ -1600,19 +1612,21 @@ def main():
         shell(["coverage", "erase"])
 
     prioritized_tests = []
-    not_prioritized_tests = selected_tests
+    general_tests = selected_tests
     if IS_CI and HAVE_TEST_SELECTION_TOOLS:
         # downloading test cases configuration to local environment
         get_test_case_configs(dirpath=test_directory)
-        (prioritized_tests, not_prioritized_tests) = get_reordered_tests(selected_tests)
+        (prioritized_tests, general_tests) = get_reordered_tests(general_tests)
 
-    # Should take into account both at the same time but I'm lazy
-    prioritized_tests = do_sharding(options, prioritized_tests)
-    not_prioritized_tests = do_sharding(options, not_prioritized_tests)
+    test_times_dict = download_test_times(TEST_TIMES_FILE)
+    prioritized_tests = do_sharding(
+        options, prioritized_tests, test_times_dict, sort=False
+    )
+    general_tests = do_sharding(options, general_tests, test_times_dict)
 
     if options.verbose:
 
-        def print_tests(tests, category):
+        def print_tests(category, tests):
             tests_str = "\n ".join(str(x) for x in tests)
             print_to_stderr(f"{category} tests:\n {tests_str}")
 
@@ -1623,11 +1637,9 @@ def main():
             "Prioritized serial", [x for x in prioritized_tests if must_serial(x)]
         )
         print_tests(
-            "General parallel", [x for x in not_prioritized_tests if not must_serial(x)]
+            "General parallel", [x for x in general_tests if not must_serial(x)]
         )
-        print_tests(
-            "General serial", [x for x in not_prioritized_tests if must_serial(x)]
-        )
+        print_tests("General serial", [x for x in general_tests if must_serial(x)])
 
     if options.dry_run:
         return
@@ -1645,7 +1657,7 @@ def main():
     failure_messages = []
     experiment_dict = {
         "prioritized_tests_len": len(prioritized_tests),
-        "general_tests_len": len(not_prioritized_tests),
+        "general_tests_len": len(general_tests),
     }
     start_time = time.time()
 
@@ -1657,7 +1669,7 @@ def main():
         experiment_dict["prioritized_failure_messages_len"] = len(failure_messages)
         experiment_dict["general_start_time"] = time.time() - start_time
         general_failure_messages = run_tests(
-            not_prioritized_tests, test_directory, options, "General tests"
+            general_tests, test_directory, options, "General tests"
         )
         experiment_dict["end_time"] = time.time() - start_time
         experiment_dict["general_failure_messages_len"] = len(general_failure_messages)

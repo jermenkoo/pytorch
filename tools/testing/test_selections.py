@@ -88,8 +88,8 @@ def get_with_pytest_shard(
 ) -> List[ShardedTest]:
     sharded_tests: List[ShardedTest] = []
     for test in tests:
-        duration = test_file_times[test]
-        if duration > THRESHOLD:
+        duration = test_file_times.get(test, None)
+        if duration and duration > THRESHOLD:
             num_shards = math.ceil(duration / THRESHOLD)
             for i in range(num_shards):
                 sharded_tests.append(
@@ -105,20 +105,24 @@ def calculate_shards(
     tests: List[str],
     test_file_times: Dict[str, float],
     must_serial: Optional[Callable[[str], bool]] = None,
+    sort: bool = True,
 ) -> List[Tuple[float, List[ShardedTest]]]:
     must_serial = must_serial or (lambda x: True)
 
-    known_tests = [x for x in tests if x in test_file_times]
-    unknown_tests: List[str] = [x for x in tests if x not in known_tests]
+    known_tests = tests
+    unknown_tests = []
 
-    sorted_tests = sorted(
-        get_with_pytest_shard(known_tests, test_file_times),
-        key=lambda j: j.get_time(),
-        reverse=True,
-    )
+    if sort:
+        known_tests = [x for x in tests if x in test_file_times]
+        unknown_tests = [x for x in tests if x not in known_tests]
+
+    known_tests = get_with_pytest_shard(known_tests, test_file_times)
+
+    if sort:
+        known_tests = sorted(known_tests, key=lambda j: j.get_time(), reverse=True)
 
     sharded_jobs: List[ShardJob] = [ShardJob() for _ in range(num_shards)]
-    for test in sorted_tests:
+    for test in known_tests:
         if must_serial(test.name):
             min_sharded_job = min(sharded_jobs, key=lambda j: j.get_total_time())
             min_sharded_job.serial.append(test)
@@ -336,9 +340,10 @@ def get_reordered_tests(
 
     add_tests(
         _get_file_rating_tests(),
-        "If run, these tests will be preioritized because I say so",
+        "If run, these tests will be preioritized for an experiment in TD",
     )
-    prioritized_tests = [x for x in tests if x in prioritized_tests]
+
+    prioritized_tests = [x for x in prioritized_tests if x in tests]
     the_rest = [x for x in tests if x not in prioritized_tests]
 
     if prioritized_tests:
@@ -347,16 +352,15 @@ def get_reordered_tests(
             f"Reordering tests: Prioritizing {len(prioritized_tests)} of {test_cnt_str}"
         )
 
-    # I'm probably going to ruin this table
-    # emit_metric(
-    #     "test_reordering_prioritized_tests",
-    #     {
-    #         "prioritized_test_cnt": len(prioritized_tests),
-    #         "total_test_cnt": len(tests),
-    #         "prioritized_tests": prioritized_tests,
-    #         "remaining_tests": the_rest,
-    #     },
-    # )
+    emit_metric(
+        "test_reordering_prioritized_tests",
+        {
+            "prioritized_test_cnt": len(prioritized_tests),
+            "total_test_cnt": len(tests),
+            "prioritized_tests": prioritized_tests,
+            "remaining_tests": the_rest,
+        },
+    )
 
     return (prioritized_tests, the_rest)
 
