@@ -1611,28 +1611,22 @@ def main():
     not_prioritized_tests = do_sharding(options, not_prioritized_tests)
 
     if options.verbose:
-        # Print all the test info here
-        print_to_stderr(
-            "Prioritized parallel {} tests:\n {}".format(
-                NUM_PROCS,
-                "\n ".join(str(x) for x in prioritized_tests if not must_serial(x)),
-            )
+
+        def print_tests(tests, category):
+            tests_str = "\n ".join(str(x) for x in tests)
+            print_to_stderr(f"{category} tests:\n {tests_str}")
+
+        print_tests(
+            "Prioritized parallel", [x for x in prioritized_tests if not must_serial(x)]
         )
-        print_to_stderr(
-            "Prioritized serial tests:\n {}".format(
-                "\n ".join(str(x) for x in prioritized_tests if must_serial(x))
-            )
+        print_tests(
+            "Prioritized serial", [x for x in prioritized_tests if must_serial(x)]
         )
-        print_to_stderr(
-            "General parallel {} tests:\n {}".format(
-                NUM_PROCS,
-                "\n ".join(str(x) for x in not_prioritized_tests if not must_serial(x)),
-            )
+        print_tests(
+            "General parallel", [x for x in not_prioritized_tests if not must_serial(x)]
         )
-        print_to_stderr(
-            "General serial tests:\n {}".format(
-                "\n ".join(str(x) for x in not_prioritized_tests if must_serial(x))
-            )
+        print_tests(
+            "General serial", [x for x in not_prioritized_tests if must_serial(x)]
         )
 
     if options.dry_run:
@@ -1650,10 +1644,10 @@ def main():
 
     failure_messages = []
     experiment_dict = {
-        "start_time": time.time(),
         "prioritized_tests_len": len(prioritized_tests),
         "general_tests_len": len(not_prioritized_tests),
     }
+    start_time = time.time()
 
     # First run the prioritized tests, then the remaining tests.
     try:
@@ -1661,11 +1655,11 @@ def main():
             prioritized_tests, test_directory, options, "Prioritized tests"
         )
         experiment_dict["prioritized_failure_messages_len"] = len(failure_messages)
-        experiment_dict["general_start_time"] = time.time()
+        experiment_dict["general_start_time"] = time.time() - start_time
         general_failure_messages = run_tests(
             not_prioritized_tests, test_directory, options, "General tests"
         )
-        experiment_dict["end_time"] = time.time()
+        experiment_dict["end_time"] = time.time() - start_time
         experiment_dict["general_failure_messages_len"] = len(general_failure_messages)
 
         failure_messages += general_failure_messages

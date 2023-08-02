@@ -278,31 +278,28 @@ def log_time_savings(
     return max_time_savings_sec
 
 
-def _get_file_rating_tests() -> Set[str]:
+def _get_file_rating_tests() -> List[str]:
     path = REPO_ROOT / "test" / TEST_FILE_RATINGS_FILE
     if not os.path.exists(path):
         print(f"could not find path {path}")
-        return set()
+        return []
     with open(path) as f:
         test_file_ratings = cast(Dict[str, Dict[str, float]], json.load(f))
     try:
         changed_files = _query_changed_files()
     except Exception as e:
         warn(f"Can't query changed test files due to {e}")
-        # If unable to get changed files from git, quit without doing any sorting
-        return set()
+        return []
     ratings: Dict[str, float] = {}
     for file in changed_files:
         for test_file, score in test_file_ratings.get(file, {}).items():
             if test_file not in ratings:
                 ratings[test_file] = 0
             ratings[test_file] += score
-    limit = 100
     prioritize = [
-        f"{x.replace('.', '/')}"
-        for x in sorted(ratings, key=lambda x: ratings[x])[:limit]
+        x.replace(".", "/") for x in sorted(ratings, key=lambda x: ratings[x])
     ]
-    return set(prioritize)
+    return prioritize
 
 
 def get_reordered_tests(
@@ -315,18 +312,17 @@ def get_reordered_tests(
     prioritized_tests: List[str] = []
 
     def add_tests(
-        tests: Union[List[str], Set[str]], test_group_description: str
+        tests_to_add: Union[List[str], Set[str]], test_group_description: str
     ) -> None:
-        if not tests:
+        if not tests_to_add:
             return
 
         print(f"{test_group_description}:")
-        for test in tests:
-            print(f"  {test}")
-
-        for test in tests:
-            if test not in prioritized_tests:
-                prioritized_tests.append(test)
+        for test in tests_to_add:
+            if test in tests:
+                print(f"  {test}")
+                if test not in prioritized_tests:
+                    prioritized_tests.append(test)
 
     add_tests(
         _get_previously_failing_tests(),
