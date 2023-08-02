@@ -428,9 +428,6 @@ def non_kwarg_to(fake_mode, func, *args, **kwargs):
     )
 
 
-# Many of these operators mutate striding in place and output conj depending on input
-# that is not reflected in meta registration.
-# TODO: fix registrations, add all existing impls that are correct
 def unsupported_complex_op(op):
     if op.namespace not in ("aten", "prims"):
         return False
@@ -443,10 +440,17 @@ def unsupported_complex_op(op):
     return False
 
 
-# These operators mutate striding in place and output conj depending on input
-# that is not reflected in meta registration
 @register_op_impl(unsupported_complex_op)
-def unsupported_fft(fake_mode, func, *args, **kwargs):
+def fft_stride_workaround(fake_mode, func, *args, **kwargs):
+    # This is a workaround for the FFT meta implmentations having incorrect strides
+    def extractor(input, *args, **kwargs):
+        return input
+
+    input = extractor(*args, **kwargs)
+    if not input._has_symbolic_sizes_strides and fake_mode.allow_fallback_kernels:
+        # For static shapes, we can fall back to eager for the real strides
+        return run_fallback_kernel(fake_mode, func, args, kwargs, None)
+
     raise UnsupportedOperatorException(func)
 
 
@@ -1397,7 +1401,7 @@ class FakeTensorMode(TorchDispatchMode):
         # TODO - we should be use the prim aten impl
         # TODO - fix prims complex ops
         if (
-            "prims::" in func._schema.name
+            func.namespace == "prims"
             and hasattr(func, "prim_meta_impl")
             and not unsupported_complex_op(func)
         ):
