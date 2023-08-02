@@ -18,7 +18,7 @@ from tools.stats.import_test_stats import (
 )
 from tools.stats.upload_stats_lib import emit_metric
 
-REPO_ROOT = Path(__file__).resolve().parent.parent
+REPO_ROOT = Path(__file__).resolve().parent.parent.parent
 
 IS_MEM_LEAK_CHECK = os.getenv("PYTORCH_TEST_CUDA_MEM_LEAK_CHECK", "0") == "1"
 
